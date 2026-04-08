@@ -1,0 +1,102 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - FleetCommerce</title>
+    <script src="/static/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="csrf-token" content="{{.CSRFToken}}">
+</head>
+<body hx-boost="true">
+    <script>
+    // Read CSRF token from cookie (always up-to-date after each server response)
+    function getCsrfToken() {
+        var m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    // Inject CSRF token into every HTMX request as both header and form parameter
+    document.addEventListener('htmx:configRequest', function(e) {
+        var token = getCsrfToken();
+        e.detail.headers['X-CSRF-Token'] = token;
+        if (!e.detail.parameters['csrf_token']) {
+            e.detail.parameters['csrf_token'] = token;
+        }
+    });
+    </script>
+    {{if .User}}
+    <div class="app-shell">
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <h2>FleetCommerce</h2>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/" class="{{if eq .ActiveNav "dashboard"}}active{{end}}">Dashboard</a></li>
+                <li><a href="/catalog" class="{{if eq .ActiveNav "catalog"}}active{{end}}">Vehicle Catalog</a></li>
+                <li><a href="/cart" class="{{if eq .ActiveNav "cart"}}active{{end}}">Cart</a></li>
+                <li><a href="/orders" class="{{if eq .ActiveNav "orders"}}active{{end}}">Orders</a></li>
+                <li><a href="/notifications" class="{{if eq .ActiveNav "notifications"}}active{{end}}">Notifications
+                    {{if and .UnreadCount (gt .UnreadCount 0)}}<span class="badge">{{.UnreadCount}}</span>{{end}}
+                </a></li>
+                <li><a href="/alerts" class="{{if eq .ActiveNav "alerts"}}active{{end}}">Alerts</a></li>
+                {{if hasPermission .Permissions "metric.read"}}
+                <li><a href="/metrics" class="{{if eq .ActiveNav "metrics"}}active{{end}}">Metrics</a></li>
+                {{end}}
+                {{if hasPermission .Permissions "audit.read"}}
+                <li><a href="/audit" class="{{if eq .ActiveNav "audit"}}active{{end}}">Audit Log</a></li>
+                {{end}}
+            </ul>
+        </nav>
+        <div class="main-area">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    {{template "breadcrumb" .}}
+                </div>
+                <div class="top-bar-right">
+                    <span class="user-info">{{.User.FullName}} ({{index .Roles 0}})</span>
+                    <form method="POST" action="/logout" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                        <button type="submit" class="btn btn-sm btn-outline">Logout</button>
+                    </form>
+                </div>
+            </header>
+            <div id="flash-container">
+                {{template "flash" .}}
+            </div>
+            <main class="content">
+                {{template "content" .}}
+            </main>
+        </div>
+    </div>
+    {{else}}
+    <div class="auth-container">
+        {{template "content" .}}
+    </div>
+    {{end}}
+</body>
+</html>
+{{end}}
+
+{{define "breadcrumb"}}{{end}}
+{{define "pagination"}}
+{{if .}}
+<div class="pagination">
+    {{if gt .Page 1}}
+    <a href="?page={{sub .Page 1}}" class="btn btn-sm btn-outline">&laquo; Prev</a>
+    {{end}}
+    <span class="page-info">Page {{.Page}} of {{.TotalPages}}</span>
+    {{if lt .Page .TotalPages}}
+    <a href="?page={{add .Page 1}}" class="btn btn-sm btn-outline">Next &raquo;</a>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+{{define "flash"}}
+{{if .Flash}}
+<div class="flash flash-{{.Flash.Type}}" id="flash-msg">
+    {{.Flash.Message}}
+    <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+</div>
+{{end}}
+{{end}}

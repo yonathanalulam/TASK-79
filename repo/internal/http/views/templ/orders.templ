@@ -1,0 +1,152 @@
+package templ
+
+import "fmt"
+
+templ OrdersPage(data PageData, orderList []OrderView, pag Pagination, filterStatus, filterQuery string) {
+	@Layout(data) {
+		<div class="page-header"><h1>Orders</h1></div>
+		<div class="filter-bar">
+			<form hx-get="/orders" hx-target="#order-list" hx-push-url="true" class="inline-form">
+				<select name="status" class="form-control">
+					<option value="">All Statuses</option>
+					<option value="created" selected?={ filterStatus == "created" }>Created</option>
+					<option value="payment_recorded" selected?={ filterStatus == "payment_recorded" }>Payment Recorded</option>
+					<option value="picking" selected?={ filterStatus == "picking" }>Picking</option>
+					<option value="completed" selected?={ filterStatus == "completed" }>Completed</option>
+					<option value="cancelled" selected?={ filterStatus == "cancelled" }>Cancelled</option>
+				</select>
+				<input type="text" name="q" class="form-control" placeholder="Search order #" value={ filterQuery }/>
+				<button type="submit" class="btn btn-primary">Filter</button>
+			</form>
+		</div>
+		<div id="order-list">
+			if len(orderList) > 0 {
+				<table class="table">
+					<thead><tr><th>Order #</th><th>Customer</th><th>Status</th><th>Created</th><th>Promised</th><th>Actions</th></tr></thead>
+					<tbody>
+						for _, o := range orderList {
+							<tr>
+								<td><a href={ templ.SafeURL(fmt.Sprintf("/orders/%d", o.ID)) }>{ o.OrderNumber }</a></td>
+								<td>{ o.CustomerName }</td>
+								<td><span class={ "badge badge-" + o.Status }>{ o.Status }</span></td>
+								<td>{ o.CreatedAt }</td>
+								<td>{ o.PromisedDate }</td>
+								<td><a href={ templ.SafeURL(fmt.Sprintf("/orders/%d", o.ID)) } class="btn btn-sm btn-outline">View</a></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				@PaginationComponent(pag)
+			} else {
+				<div class="empty-state"><p>No orders found.</p></div>
+			}
+		</div>
+	}
+}
+
+templ OrderDetailPage(data PageData, order OrderView, lines []OrderLineView, notes []OrderNoteView, history []TimelineEntry, transitions []string) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Order { order.OrderNumber }</h1>
+			<a href="/orders" class="btn btn-outline">Back to Orders</a>
+		</div>
+		<div class="detail-grid">
+			<div class="detail-main">
+				<div class="card">
+					<h3>Order Info</h3>
+					<dl class="detail-list">
+						<dt>Order Number</dt><dd>{ order.OrderNumber }</dd>
+						<dt>Customer</dt><dd>{ order.CustomerName }</dd>
+						<dt>Status</dt><dd><span class={ "badge badge-" + order.Status }>{ order.Status }</span></dd>
+						<dt>Created</dt><dd>{ order.CreatedAt }</dd>
+					</dl>
+				</div>
+				<div class="card">
+					<h3>Actions</h3>
+					<div class="action-buttons">
+						for _, t := range transitions {
+							<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/api/orders/%d/transition", order.ID)) } style="display:inline">
+								<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+								<input type="hidden" name="to_status" value={ t }/>
+								<button type="submit" class="btn btn-sm btn-primary">{ t }</button>
+							</form>
+						}
+						if order.Status == "created" && data.Permissions["order.payment"] {
+							<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/api/orders/%d/payment-recorded", order.ID)) } style="display:inline">
+								<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+								<button type="submit" class="btn btn-sm btn-success">Record Payment</button>
+							</form>
+						}
+					</div>
+				</div>
+				<div class="card">
+					<h3>Line Items</h3>
+					<table class="table">
+						<thead><tr><th>Vehicle</th><th>Requested</th><th>Allocated</th><th>Backordered</th><th>Status</th></tr></thead>
+						<tbody>
+							for _, l := range lines {
+								<tr>
+									<td>{ l.VehicleName }</td>
+									<td>{ fmt.Sprint(l.QuantityRequested) }</td>
+									<td>{ fmt.Sprint(l.QuantityAllocated) }</td>
+									<td>{ fmt.Sprint(l.QuantityBackord) }</td>
+									<td><span class={ "badge badge-" + l.LineStatus }>{ l.LineStatus }</span></td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<div class="card">
+					<h3>Notes</h3>
+					if data.Permissions["order.notes"] {
+						<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/api/orders/%d/notes", order.ID)) }>
+							<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+							<div class="form-row">
+								<select name="note_type" class="form-control">
+									<option value="internal">Internal</option>
+									<option value="picking">Picking</option>
+									<option value="delivery">Delivery</option>
+								</select>
+								<input type="text" name="content" class="form-control" placeholder="Add a note..." required maxlength="2000"/>
+								<button type="submit" class="btn btn-sm btn-primary">Add</button>
+							</div>
+						</form>
+					}
+					for _, n := range notes {
+						<div class="note-item">
+							<span class={ "badge badge-" + n.NoteType }>{ n.NoteType }</span>
+							<span>{ n.Content }</span>
+							<small>by { n.AuthorName } at { n.CreatedAt }</small>
+						</div>
+					}
+				</div>
+			</div>
+			<div class="detail-sidebar">
+				<div class="card">
+					<h3>Timeline</h3>
+					<div class="timeline">
+						for _, h := range history {
+							<div class="timeline-item">
+								<div class="timeline-dot"></div>
+								<div class="timeline-content">
+									<strong>{ h.ToStatus }</strong>
+									if h.FromStatus != "" {
+										<small>from { h.FromStatus }</small>
+									}
+									<div class="timeline-meta">
+										if h.ActorType == "system" {
+											System
+										} else {
+											{ h.ActorName }
+										}
+										<br/>{ h.Time }
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}

@@ -1,0 +1,49 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Orders</h1>
+</div>
+
+<div class="filter-bar">
+    <form hx-get="/orders" hx-target="#order-list" hx-push-url="true" class="inline-form">
+        <select name="status" class="form-control">
+            <option value="">All Statuses</option>
+            <option value="created" {{if eq .FilterStatus "created"}}selected{{end}}>Created</option>
+            <option value="payment_recorded" {{if eq .FilterStatus "payment_recorded"}}selected{{end}}>Payment Recorded</option>
+            <option value="cutoff" {{if eq .FilterStatus "cutoff"}}selected{{end}}>Cutoff</option>
+            <option value="picking" {{if eq .FilterStatus "picking"}}selected{{end}}>Picking</option>
+            <option value="arrival" {{if eq .FilterStatus "arrival"}}selected{{end}}>Arrival</option>
+            <option value="pickup" {{if eq .FilterStatus "pickup"}}selected{{end}}>Pickup</option>
+            <option value="delivery" {{if eq .FilterStatus "delivery"}}selected{{end}}>Delivery</option>
+            <option value="completed" {{if eq .FilterStatus "completed"}}selected{{end}}>Completed</option>
+            <option value="cancelled" {{if eq .FilterStatus "cancelled"}}selected{{end}}>Cancelled</option>
+        </select>
+        <input type="text" name="q" class="form-control" placeholder="Search order #" value="{{.FilterQuery}}">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+</div>
+
+<div id="order-list">
+    {{if .Orders}}
+    <table class="table">
+        <thead>
+            <tr><th>Order #</th><th>Customer</th><th>Status</th><th>Created</th><th>Promised</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        {{range .Orders}}
+            <tr>
+                <td><a href="/orders/{{.ID}}">{{.OrderNumber}}</a></td>
+                <td>{{.CustomerName}}</td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                <td>{{if .PromisedDate}}{{.PromisedDate}}{{else}}-{{end}}</td>
+                <td><a href="/orders/{{.ID}}" class="btn btn-sm btn-outline">View</a></td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{template "pagination" .Pagination}}
+    {{else}}
+    <div class="empty-state"><p>No orders found.</p></div>
+    {{end}}
+</div>
+{{end}}

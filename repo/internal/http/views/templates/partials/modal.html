@@ -1,0 +1,83 @@
+{{define "modal"}}
+<div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>{{.Title}}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            {{template "modal-content" .}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "modal-content"}}{{end}}
+
+{{define "csv-import-modal"}}
+<div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Import CSV</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="/api/catalog/imports" enctype="multipart/form-data"
+                  hx-post="/api/catalog/imports" hx-target="#import-results" hx-encoding="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <div class="form-group">
+                    <label>CSV File</label>
+                    <input type="file" name="file" accept=".csv" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload & Preview</button>
+            </form>
+            <div id="import-results"></div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "merge-cart-modal"}}
+<div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Merge Cart</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Select a cart to merge into this one (same customer):</p>
+            <form method="POST" action="/api/carts/{{.CartID}}/merge"
+                  hx-post="/api/carts/{{.CartID}}/merge">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <select name="source_cart_id" class="form-control" required>
+                    {{range .MergeableCarts}}
+                    <option value="{{.ID}}">Cart #{{.ID}} ({{.ItemCount}} items)</option>
+                    {{end}}
+                </select>
+                <button type="submit" class="btn btn-primary" style="margin-top:1rem">Merge</button>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "close-alert-modal"}}
+<div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Close Alert</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="/api/alerts/{{.AlertID}}/close">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <div class="form-group">
+                    <label>Resolution Notes (required)</label>
+                    <textarea name="resolution_notes" class="form-control" rows="4" required minlength="10"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">Close Alert</button>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}

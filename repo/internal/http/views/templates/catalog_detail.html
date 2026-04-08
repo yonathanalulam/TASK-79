@@ -1,0 +1,93 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>{{.Model.ModelName}}</h1>
+    <div class="page-actions">
+        {{if hasPermission .Permissions "catalog.write"}}
+        <a href="/catalog/{{.Model.ID}}/edit" class="btn btn-primary">Edit Draft</a>
+        {{end}}
+        {{if hasPermission .Permissions "catalog.publish"}}
+            {{if eq .Model.PublicationStatus "draft"}}
+            <form method="POST" action="/api/catalog/models/{{.Model.ID}}/publish" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <button type="submit" class="btn btn-success">Publish</button>
+            </form>
+            {{else if eq .Model.PublicationStatus "published"}}
+            <form method="POST" action="/api/catalog/models/{{.Model.ID}}/unpublish" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <button type="submit" class="btn btn-warning">Unpublish</button>
+            </form>
+            {{else}}
+            <form method="POST" action="/api/catalog/models/{{.Model.ID}}/publish" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <button type="submit" class="btn btn-success">Re-Publish</button>
+            </form>
+            {{end}}
+        {{end}}
+        <a href="/catalog" class="btn btn-outline">Back to List</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-main">
+        <div class="card">
+            <h3>Details</h3>
+            <dl class="detail-list">
+                <dt>Model Code</dt><dd>{{.Model.ModelCode}}</dd>
+                <dt>Brand</dt><dd>{{.Model.BrandName}}</dd>
+                <dt>Series</dt><dd>{{.Model.SeriesName}}</dd>
+                <dt>Year</dt><dd>{{.Model.Year}}</dd>
+                <dt>Status</dt><dd><span class="badge badge-{{.Model.PublicationStatus}}">{{.Model.PublicationStatus}}</span></dd>
+                <dt>Stock</dt><dd>{{.Model.StockQuantity}}</dd>
+                {{if .Model.ExpiryDate}}<dt>Expiry Date</dt><dd>{{.Model.ExpiryDate}}</dd>{{end}}
+                {{if .Model.DiscontinuedAt}}<dt>Discontinued</dt><dd>{{.Model.DiscontinuedAt}}</dd>{{end}}
+            </dl>
+            {{if .Model.Description}}
+            <h4>Description</h4>
+            <p>{{.Model.Description}}</p>
+            {{end}}
+        </div>
+
+        <div class="card">
+            <h3>Media</h3>
+            {{if hasPermission .Permissions "media.upload"}}
+            <form method="POST" action="/api/catalog/models/{{.Model.ID}}/media" enctype="multipart/form-data" hx-post="/api/catalog/models/{{.Model.ID}}/media" hx-target="#media-gallery" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <div class="form-group">
+                    <input type="file" name="file" accept="image/*,video/*" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">Upload</button>
+            </form>
+            {{end}}
+            <div id="media-gallery" class="media-gallery">
+                {{range .Media}}
+                <div class="media-item">
+                    {{if eq .Kind "image"}}
+                    <img src="/uploads/{{.StoredPath}}" alt="{{.OriginalFilename}}" class="media-thumb">
+                    {{else}}
+                    <div class="media-video-placeholder">Video: {{.OriginalFilename}}</div>
+                    {{end}}
+                    <small>{{.OriginalFilename}} ({{.SizeBytes}} bytes)</small>
+                </div>
+                {{else}}
+                <p class="empty-state">No media uploaded yet.</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-sidebar">
+        <div class="card">
+            <h3>Version History</h3>
+            {{range .Versions}}
+            <div class="version-item">
+                <strong>v{{.VersionNumber}}</strong>
+                <span class="badge badge-{{.Status}}">{{.Status}}</span>
+                <small>{{.CreatedAt.Format "2006-01-02 15:04"}}</small>
+            </div>
+            {{else}}
+            <p>No versions yet.</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}

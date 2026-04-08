@@ -1,0 +1,97 @@
+package templ
+
+import "fmt"
+
+templ CartListPage(data PageData, carts []CartView) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Shopping Carts</h1>
+			if data.Permissions["cart.write"] {
+				<button class="btn btn-primary" hx-post="/api/carts" hx-swap="none">New Cart</button>
+			}
+		</div>
+		if len(carts) > 0 {
+			<table class="table">
+				<thead><tr><th>ID</th><th>Customer</th><th>Items</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+				<tbody>
+					for _, c := range carts {
+						<tr>
+							<td>{ fmt.Sprintf("#%d", c.ID) }</td>
+							<td>{ c.CustomerName }</td>
+							<td>{ fmt.Sprint(c.ItemCount) }</td>
+							<td><span class={ "badge badge-" + c.Status }>{ c.Status }</span></td>
+							<td>{ c.CreatedAt }</td>
+							<td>
+								<a href={ templ.SafeURL(fmt.Sprintf("/cart/%d", c.ID)) } class="btn btn-sm btn-outline">View</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		} else {
+			<div class="empty-state"><p>No carts found.</p></div>
+		}
+	}
+}
+
+templ CartDetailPage(data PageData, cart CartView, items []CartItemView) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Cart { fmt.Sprintf("#%d", cart.ID) }</h1>
+			<div class="page-actions">
+				if cart.Status == "open" && data.Permissions["cart.write"] {
+					<button class="btn btn-primary" hx-post={ fmt.Sprintf("/api/carts/%d/revalidate", cart.ID) }>Revalidate</button>
+					<button class="btn btn-success" hx-post={ fmt.Sprintf("/api/carts/%d/checkout", cart.ID) } hx-confirm="Submit this cart as an order?">Checkout</button>
+				}
+				<a href="/cart" class="btn btn-outline">Back</a>
+			</div>
+		</div>
+		<div class="card">
+			<h3>Customer: { cart.CustomerName }</h3>
+			<p>Status: <span class={ "badge badge-" + cart.Status }>{ cart.Status }</span></p>
+		</div>
+		<div class="card">
+			<div class="card-header">
+				<h3>Items</h3>
+				if cart.Status == "open" && data.Permissions["cart.write"] {
+					<button class="btn btn-sm btn-primary" hx-get={ fmt.Sprintf("/cart/%d/add-item", cart.ID) } hx-target="#modal-container">Add Item</button>
+				}
+			</div>
+			if len(items) > 0 {
+				<table class="table">
+					<thead><tr><th>Vehicle</th><th>Qty</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+					<tbody>
+						for _, item := range items {
+							<tr class={ rowClass(item.ValidityStatus) }>
+								<td>{ item.VehicleName }</td>
+								<td>{ fmt.Sprint(item.Quantity) }</td>
+								<td>{ item.UnitPriceSnapshot }</td>
+								<td>
+									<span class={ "badge badge-" + item.ValidityStatus }>{ item.ValidityStatus }</span>
+									if item.ValidationMessage != "" {
+										<br/><small>{ item.ValidationMessage }</small>
+									}
+								</td>
+								<td>
+									if cart.Status == "open" && data.Permissions["cart.write"] {
+										<button class="btn btn-sm btn-outline" hx-delete={ fmt.Sprintf("/api/carts/%d/items/%d", cart.ID, item.ID) } hx-confirm="Remove this item?">Remove</button>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			} else {
+				<div class="empty-state"><p>Cart is empty.</p></div>
+			}
+		</div>
+		<div id="modal-container"></div>
+	}
+}
+
+func rowClass(status string) string {
+	if status != "valid" {
+		return "row-invalid"
+	}
+	return ""
+}

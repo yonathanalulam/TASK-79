@@ -1,0 +1,90 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Vehicle Catalog</h1>
+    <div class="page-actions">
+        {{if hasPermission .Permissions "catalog.write"}}
+        <button class="btn btn-primary" hx-get="/catalog/new" hx-target="#modal-container" hx-swap="innerHTML">Add Vehicle</button>
+        {{end}}
+        {{if hasPermission .Permissions "catalog.import"}}
+        <button class="btn btn-outline" hx-get="/catalog/import" hx-target="#modal-container" hx-swap="innerHTML">Import CSV</button>
+        {{end}}
+        <a href="/api/catalog/export.csv" class="btn btn-outline">Export CSV</a>
+    </div>
+</div>
+
+<div class="catalog-layout">
+    <aside class="filter-sidebar">
+        <h3>Filters</h3>
+        <form hx-get="/catalog" hx-target="#catalog-list" hx-push-url="true">
+            <div class="form-group">
+                <label>Brand</label>
+                <select name="brand_id" class="form-control" hx-get="/api/catalog/series" hx-target="#series-select" hx-trigger="change" hx-include="[name='brand_id']">
+                    <option value="">All Brands</option>
+                    {{range .Brands}}
+                    <option value="{{.ID}}" {{if eq .ID $.FilterBrandID}}selected{{end}}>{{.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Series</label>
+                <select name="series_id" id="series-select" class="form-control">
+                    <option value="">All Series</option>
+                    {{range .SeriesList}}
+                    <option value="{{.ID}}" {{if eq .ID $.FilterSeriesID}}selected{{end}}>{{.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" class="form-control">
+                    <option value="">All</option>
+                    <option value="draft" {{if eq .FilterStatus "draft"}}selected{{end}}>Draft</option>
+                    <option value="published" {{if eq .FilterStatus "published"}}selected{{end}}>Published</option>
+                    <option value="unpublished" {{if eq .FilterStatus "unpublished"}}selected{{end}}>Unpublished</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Search</label>
+                <input type="text" name="q" class="form-control" placeholder="Model code or name" value="{{.FilterQuery}}">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Apply</button>
+        </form>
+    </aside>
+
+    <div id="catalog-list" class="catalog-main">
+        {{if .Models}}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Code</th><th>Name</th><th>Brand</th><th>Series</th><th>Year</th><th>Stock</th><th>Status</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .Models}}
+                <tr>
+                    <td>{{.ModelCode}}</td>
+                    <td><a href="/catalog/{{.ID}}">{{.ModelName}}</a></td>
+                    <td>{{.BrandName}}</td>
+                    <td>{{.SeriesName}}</td>
+                    <td>{{.Year}}</td>
+                    <td>{{.StockQuantity}}</td>
+                    <td><span class="badge badge-{{.PublicationStatus}}">{{.PublicationStatus}}</span></td>
+                    <td>
+                        <a href="/catalog/{{.ID}}" class="btn btn-sm btn-outline">View</a>
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{template "pagination" .Pagination}}
+        {{else}}
+        <div class="empty-state">
+            <p>No vehicles found matching your criteria.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<div id="modal-container"></div>
+{{end}}
+

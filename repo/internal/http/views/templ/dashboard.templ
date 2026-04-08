@@ -1,0 +1,26 @@
+package templ
+
+import "fmt"
+
+templ DashboardPage(data PageData, summary DashboardSummary) {
+	@Layout(data) {
+		<h1>Dashboard</h1>
+		<div class="dashboard-cards">
+			<div class="card">
+				<div class="card-grid">
+					@statCard("Open Carts", summary.OpenCarts)
+					@statCard("Active Orders", summary.ActiveOrders)
+					@statCard("Unread Notifications", summary.UnreadNotifications)
+					@statCard("Active Alerts", summary.ActiveAlerts)
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ statCard(label string, value int) {
+	<div class="stat-card">
+		<h3>{ label }</h3>
+		<span class="stat-value">{ fmt.Sprint(value) }</span>
+	</div>
+}

@@ -1,0 +1,88 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>{{.Metric.Name}}</h1>
+    <div class="page-actions">
+        {{if and (hasPermission .Permissions "metric.activate") (ne .Metric.Status "active")}}
+        <form method="POST" action="/api/metrics/{{.Metric.ID}}/activate" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" class="btn btn-success" {{if not .ImpactAnalysisOK}}disabled title="Run impact analysis first"{{end}}>Activate</button>
+        </form>
+        {{end}}
+        <a href="/metrics" class="btn btn-outline">Back</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-main">
+        <div class="card">
+            <h3>Details</h3>
+            <dl class="detail-list">
+                <dt>Status</dt><dd><span class="badge badge-{{.Metric.Status}}">{{.Metric.Status}}</span></dd>
+                <dt>Description</dt><dd>{{.Metric.Description}}</dd>
+            </dl>
+        </div>
+
+        <div class="card">
+            <h3>Versions</h3>
+            {{range .Versions}}
+            <div class="version-item">
+                <strong>v{{.VersionNumber}}</strong> - <span class="badge badge-{{.Status}}">{{.Status}}</span>
+                {{if .SQLExpression}}<pre class="code-block">{{.SQLExpression}}</pre>{{end}}
+                {{if .SemanticFormula}}<p>Formula: {{.SemanticFormula}}</p>{{end}}
+                {{if .TimeGrain}}<p>Time Grain: {{.TimeGrain}}</p>{{end}}
+                {{if .IsDerived}}<span class="badge">Derived</span>{{end}}
+                <small>{{.CreatedAt.Format "2006-01-02 15:04"}}</small>
+            </div>
+            {{end}}
+        </div>
+
+        <div class="card">
+            <h3>Impact Analysis</h3>
+            {{if .ImpactAnalysis}}
+            <div class="impact-summary">
+                <p><strong>Dependent Metrics:</strong> {{.ImpactAnalysis.DependentMetrics}}</p>
+                <p><strong>Dependent Charts:</strong> {{.ImpactAnalysis.DependentCharts}}</p>
+                <p><strong>Missing Dependencies:</strong> {{.ImpactAnalysis.MissingDeps}}</p>
+                <p><strong>Status:</strong> <span class="badge badge-{{.ImpactAnalysis.Status}}">{{.ImpactAnalysis.Status}}</span></p>
+            </div>
+            {{else}}
+            <p>No impact analysis run yet.</p>
+            {{if hasPermission .Permissions "metric.activate"}}
+            <form method="POST" action="/api/metrics/{{.Metric.ID}}/impact-analysis">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <button type="submit" class="btn btn-primary">Run Impact Analysis</button>
+            </form>
+            {{end}}
+            {{end}}
+        </div>
+    </div>
+
+    <div class="detail-sidebar">
+        <div class="card">
+            <h3>Lineage</h3>
+            {{if .Lineage}}
+            <ul class="lineage-list">
+                {{range .Lineage}}
+                <li>
+                    <span class="badge">{{.SourceType}}</span> {{.SourceName}}
+                    &rarr;
+                    <span class="badge">{{.TargetType}}</span> {{.TargetName}}
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>No lineage edges.</p>
+            {{end}}
+        </div>
+
+        <div class="card">
+            <h3>Dimensions</h3>
+            {{range .Dimensions}}
+            <div><strong>{{.Name}}</strong>: {{.Description}}</div>
+            {{else}}
+            <p>No dimensions defined.</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}

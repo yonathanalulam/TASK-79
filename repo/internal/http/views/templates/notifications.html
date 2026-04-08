@@ -1,0 +1,85 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Notification Center</h1>
+    <div class="page-actions">
+        <form method="POST" action="/api/notifications/bulk-read" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" class="btn btn-outline">Mark All Read</button>
+        </form>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="/notifications" class="tab {{if eq .ActiveTab "inbox"}}active{{end}}">Inbox</a>
+    <a href="/notifications?tab=announcements" class="tab {{if eq .ActiveTab "announcements"}}active{{end}}">Announcements</a>
+    <a href="/notifications?tab=preferences" class="tab {{if eq .ActiveTab "preferences"}}active{{end}}">Preferences</a>
+    <a href="/notifications?tab=export-queue" class="tab {{if eq .ActiveTab "export-queue"}}active{{end}}">Export Queue</a>
+</div>
+
+<div class="tab-content">
+    {{if eq .ActiveTab "inbox"}}
+    <div class="notification-list">
+        {{range .Notifications}}
+        <div class="notification-item {{if not .IsRead}}unread{{end}}" hx-post="/api/notifications/{{.ID}}/read" hx-trigger="click" hx-swap="none">
+            <div class="notification-title">{{.Title}}</div>
+            <div class="notification-body">{{.Body}}</div>
+            <div class="notification-meta">
+                <span class="badge">{{.Type}}</span>
+                <small>{{.CreatedAt.Format "2006-01-02 15:04"}}</small>
+            </div>
+        </div>
+        {{else}}
+        <div class="empty-state"><p>No notifications.</p></div>
+        {{end}}
+    </div>
+
+    {{else if eq .ActiveTab "announcements"}}
+    {{range .Announcements}}
+    <div class="announcement-item priority-{{.Priority}}">
+        <h3>{{.Title}}</h3>
+        <p>{{.Body}}</p>
+        <small>{{.CreatedAt.Format "2006-01-02 15:04"}} | Priority: {{.Priority}}</small>
+    </div>
+    {{else}}
+    <div class="empty-state"><p>No active announcements.</p></div>
+    {{end}}
+
+    {{else if eq .ActiveTab "preferences"}}
+    <form method="PUT" action="/api/notification-preferences" hx-put="/api/notification-preferences" hx-swap="none">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <table class="table">
+            <thead><tr><th>Event Type</th><th>In-App</th><th>Email</th><th>SMS</th><th>Webhook</th></tr></thead>
+            <tbody>
+            {{range .PreferenceTypes}}
+            <tr>
+                <td>{{.}}</td>
+                <td><input type="checkbox" name="in_app_{{.}}" {{if $.PrefMap}}checked{{end}}></td>
+                <td><input type="checkbox" name="email_{{.}}"></td>
+                <td><input type="checkbox" name="sms_{{.}}"></td>
+                <td><input type="checkbox" name="webhook_{{.}}"></td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary">Save Preferences</button>
+    </form>
+
+    {{else if eq .ActiveTab "export-queue"}}
+    <table class="table">
+        <thead><tr><th>ID</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Attempts</th><th>Created</th></tr></thead>
+        <tbody>
+        {{range .ExportQueue}}
+        <tr>
+            <td>#{{.ID}}</td>
+            <td>{{.Channel}}</td>
+            <td>{{.Recipient}}</td>
+            <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+            <td>{{.Attempts}}/{{.MaxAttempts}}</td>
+            <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{end}}
+</div>
+{{end}}

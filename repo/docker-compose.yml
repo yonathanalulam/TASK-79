@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fleet
+      POSTGRES_PASSWORD: fleet
+      POSTGRES_DB: fleetcommerce
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet -d fleetcommerce"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "postgres://fleet:fleet@db:5432/fleetcommerce?sslmode=disable"
+      SESSION_SECRET: "change-me-in-production-32bytes!"
+      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef"
+      APP_PORT: "8080"
+      UPLOADS_DIR: "/app/web/uploads"
+      EXPORTS_DIR: "/app/web/exports"
+      SCHEDULER_ENABLED: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/web/uploads
+      - exports:/app/web/exports
+
+volumes:
+  pgdata:
+  uploads:
+  exports:

@@ -1,0 +1,76 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .IsNew}}New Vehicle{{else}}Edit: {{.Model.ModelName}}{{end}}</h1>
+    <a href="{{if .IsNew}}/catalog{{else}}/catalog/{{.Model.ID}}{{end}}" class="btn btn-outline">Cancel</a>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{if .IsNew}}/api/catalog/models{{else}}/api/catalog/models/{{.Model.ID}}/draft{{end}}">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="brand_id">Brand</label>
+                <select name="brand_id" id="brand_id" class="form-control" required
+                    hx-get="/api/catalog/series" hx-target="#series_id" hx-trigger="change" hx-include="[name='brand_id']">
+                    <option value="">Select Brand</option>
+                    {{range .Brands}}
+                    <option value="{{.ID}}" {{if eq .ID $.Model.BrandID}}selected{{end}}>{{.Name}}</option>
+                    {{end}}
+                </select>
+                {{if .Errors.brand_id}}<span class="field-error">{{.Errors.brand_id}}</span>{{end}}
+            </div>
+            <div class="form-group">
+                <label for="series_id">Series</label>
+                <select name="series_id" id="series_id" class="form-control" required>
+                    <option value="">Select Series</option>
+                    {{range .SeriesList}}
+                    <option value="{{.ID}}" {{if eq .ID $.Model.SeriesID}}selected{{end}}>{{.Name}}</option>
+                    {{end}}
+                </select>
+                {{if .Errors.series_id}}<span class="field-error">{{.Errors.series_id}}</span>{{end}}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="model_code">Model Code</label>
+                <input type="text" name="model_code" id="model_code" class="form-control" required value="{{.Model.ModelCode}}">
+                {{if .Errors.model_code}}<span class="field-error">{{.Errors.model_code}}</span>{{end}}
+            </div>
+            <div class="form-group">
+                <label for="model_name">Model Name</label>
+                <input type="text" name="model_name" id="model_name" class="form-control" required value="{{.Model.ModelName}}">
+                {{if .Errors.model_name}}<span class="field-error">{{.Errors.model_name}}</span>{{end}}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="year">Year</label>
+                <input type="number" name="year" id="year" class="form-control" required min="1900" max="2100" value="{{.Model.Year}}">
+                {{if .Errors.year}}<span class="field-error">{{.Errors.year}}</span>{{end}}
+            </div>
+            <div class="form-group">
+                <label for="stock_quantity">Stock Quantity</label>
+                <input type="number" name="stock_quantity" id="stock_quantity" class="form-control" min="0" value="{{.Model.StockQuantity}}">
+                {{if .Errors.stock_quantity}}<span class="field-error">{{.Errors.stock_quantity}}</span>{{end}}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea name="description" id="description" class="form-control" rows="4">{{.Model.Description}}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="expiry_date">Expiry Date (optional)</label>
+            <input type="date" name="expiry_date" id="expiry_date" class="form-control" value="{{.Model.ExpiryDate}}">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .IsNew}}Create{{else}}Save Draft{{end}}</button>
+        </div>
+    </form>
+</div>
+{{end}}

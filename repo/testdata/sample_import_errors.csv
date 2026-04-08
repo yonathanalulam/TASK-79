@@ -1,0 +1,7 @@
+model_code,model_name,brand,series,year,description,publication_status,stock_quantity,expiry_date
+,Missing Code,Toyota,Sedan,2025,Missing model code,draft,10,
+GOOD-001,Good Entry,Toyota,Sedan,2025,Valid entry,published,5,
+BAD-YEAR,Bad Year,Honda,SUV,abc,Invalid year value,draft,10,
+BAD-STOCK,Bad Stock,Ford,Truck,2025,Negative stock,published,-5,
+BAD-STATUS,Bad Status,BMW,Sedan,2025,Invalid status,invalid_status,10,
+BAD-DATE,Bad Date,Toyota,SUV,2025,Invalid expiry,draft,10,not-a-date

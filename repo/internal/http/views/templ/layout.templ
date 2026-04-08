@@ -1,0 +1,93 @@
+package templ
+
+import "fmt"
+
+templ Layout(data PageData) {
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ data.Title } - FleetCommerce</title>
+		<script src="/static/js/htmx.min.js"></script>
+		<link rel="stylesheet" href="/static/css/style.css"/>
+		<meta name="csrf-token" content={ data.CSRFToken }/>
+	</head>
+	<body hx-boost="true">
+		<script>
+		function getCsrfToken(){var m=document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
+		document.addEventListener('htmx:configRequest',function(e){var t=getCsrfToken();e.detail.headers['X-CSRF-Token']=t;if(!e.detail.parameters['csrf_token'])e.detail.parameters['csrf_token']=t;});
+		</script>
+		if data.UserName != "" {
+			<div class="app-shell">
+				@Sidebar(data)
+				<div class="main-area">
+					@TopBar(data)
+					if data.FlashMsg != "" {
+						<div id="flash-container">
+							<div class={ "flash flash-" + data.FlashType } id="flash-msg">
+								{ data.FlashMsg }
+								<button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+							</div>
+						</div>
+					}
+					<main class="content">
+						{ children... }
+					</main>
+				</div>
+			</div>
+		} else {
+			<div class="auth-container">
+				{ children... }
+			</div>
+		}
+	</body>
+	</html>
+}
+
+templ Sidebar(data PageData) {
+	<nav class="sidebar">
+		<div class="sidebar-brand"><h2>FleetCommerce</h2></div>
+		<ul class="nav-links">
+			<li><a href="/" class={ navActive(data.ActiveNav, "dashboard") }>Dashboard</a></li>
+			<li><a href="/catalog" class={ navActive(data.ActiveNav, "catalog") }>Vehicle Catalog</a></li>
+			<li><a href="/cart" class={ navActive(data.ActiveNav, "cart") }>Cart</a></li>
+			<li><a href="/orders" class={ navActive(data.ActiveNav, "orders") }>Orders</a></li>
+			<li>
+				<a href="/notifications" class={ navActive(data.ActiveNav, "notifications") }>
+					Notifications
+					if data.UnreadCount > 0 {
+						<span class="badge">{ fmt.Sprint(data.UnreadCount) }</span>
+					}
+				</a>
+			</li>
+			<li><a href="/alerts" class={ navActive(data.ActiveNav, "alerts") }>Alerts</a></li>
+			if data.Permissions["metric.read"] {
+				<li><a href="/metrics" class={ navActive(data.ActiveNav, "metrics") }>Metrics</a></li>
+			}
+			if data.Permissions["audit.read"] {
+				<li><a href="/audit" class={ navActive(data.ActiveNav, "audit") }>Audit Log</a></li>
+			}
+		</ul>
+	</nav>
+}
+
+templ TopBar(data PageData) {
+	<header class="top-bar">
+		<div class="top-bar-left"></div>
+		<div class="top-bar-right">
+			<span class="user-info">{ data.UserName } ({ data.RoleName })</span>
+			<form method="POST" action="/logout" style="display:inline">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<button type="submit" class="btn btn-sm btn-outline">Logout</button>
+			</form>
+		</div>
+	</header>
+}
+
+func navActive(current, name string) string {
+	if current == name {
+		return "active"
+	}
+	return ""
+}

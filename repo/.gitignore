@@ -1,0 +1,34 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/server
+/seed
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Uploads and exports (local data)
+web/uploads/*
+!web/uploads/.gitkeep
+web/exports/*
+!web/exports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local

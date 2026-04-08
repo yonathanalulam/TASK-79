@@ -1,0 +1,195 @@
+package templ
+
+import "fmt"
+
+templ NotificationsPage(data PageData, activeTab string, notifications []NotificationView, announcements []AnnouncementView, preferences []PreferenceView, prefTypes []string, exportQueue []ExportQueueView, canManageExports bool) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Notification Center</h1>
+			<form method="POST" action="/api/notifications/bulk-read" style="display:inline">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<button type="submit" class="btn btn-outline">Mark All Read</button>
+			</form>
+		</div>
+		<div class="tabs">
+			<a href="/notifications" class={ tabClass(activeTab, "inbox") }>Inbox</a>
+			<a href="/notifications?tab=announcements" class={ tabClass(activeTab, "announcements") }>Announcements</a>
+			<a href="/notifications?tab=preferences" class={ tabClass(activeTab, "preferences") }>Preferences</a>
+			if canManageExports {
+				<a href="/notifications?tab=export-queue" class={ tabClass(activeTab, "export-queue") }>Export Queue</a>
+			}
+		</div>
+		<div class="tab-content">
+			if activeTab == "inbox" || activeTab == "" {
+				@notifInboxTab(notifications)
+			}
+			if activeTab == "announcements" {
+				@notifAnnouncementsTab(announcements)
+			}
+			if activeTab == "preferences" {
+				@notifPreferencesTab(data, preferences, prefTypes)
+			}
+			if activeTab == "export-queue" {
+				@notifExportQueueTab(exportQueue)
+			}
+		</div>
+	}
+}
+
+templ notifInboxTab(notifications []NotificationView) {
+	<div class="notification-list">
+		for _, n := range notifications {
+			<div class={ notifClass(n.IsRead) } hx-post={ fmt.Sprintf("/api/notifications/%d/read", n.ID) } hx-trigger="click" hx-swap="none">
+				<div class="notification-title">{ n.Title }</div>
+				<div class="notification-body">{ n.Body }</div>
+				<div class="notification-meta">
+					<span class="badge">{ n.Type }</span>
+					<small>{ n.CreatedAt }</small>
+				</div>
+			</div>
+		}
+		if len(notifications) == 0 {
+			<div class="empty-state"><p>No notifications.</p></div>
+		}
+	</div>
+}
+
+templ notifAnnouncementsTab(announcements []AnnouncementView) {
+	for _, a := range announcements {
+		<div class={ annClass(a) } hx-post={ fmt.Sprintf("/api/announcements/%d/read", a.ID) } hx-trigger="click" hx-swap="none">
+			<h3>{ a.Title }</h3>
+			<p>{ a.Body }</p>
+			<small>{ a.CreatedAt } | Priority: { a.Priority }</small>
+			if !a.IsRead {
+				<span class="badge">unread</span>
+			}
+		</div>
+	}
+	if len(announcements) == 0 {
+		<div class="empty-state"><p>No active announcements.</p></div>
+	}
+}
+
+templ notifPreferencesTab(data PageData, preferences []PreferenceView, prefTypes []string) {
+	<form method="POST" action="/api/notification-preferences" hx-post="/api/notification-preferences" hx-swap="none">
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		<table class="table">
+			<thead><tr><th>Event Type</th><th>In-App</th><th>Email</th><th>SMS</th><th>Webhook</th></tr></thead>
+			<tbody>
+				for _, et := range prefTypes {
+					<tr>
+						<td>{ et }</td>
+						<td><input type="checkbox" name={ "in_app_" + et } checked?={ hasPref(preferences, "in_app", et) }/></td>
+						<td><input type="checkbox" name={ "email_" + et } checked?={ hasPref(preferences, "email", et) }/></td>
+						<td><input type="checkbox" name={ "sms_" + et } checked?={ hasPref(preferences, "sms", et) }/></td>
+						<td><input type="checkbox" name={ "webhook_" + et } checked?={ hasPref(preferences, "webhook", et) }/></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		<button type="submit" class="btn btn-primary">Save Preferences</button>
+	</form>
+}
+
+templ notifExportQueueTab(exportQueue []ExportQueueView) {
+	if len(exportQueue) > 0 {
+		<table class="table">
+			<thead><tr><th>ID</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Attempts</th><th>Created</th></tr></thead>
+			<tbody>
+				for _, eq := range exportQueue {
+					<tr>
+						<td>{ fmt.Sprintf("#%d", eq.ID) }</td>
+						<td>{ eq.Channel }</td>
+						<td>{ eq.Recipient }</td>
+						<td><span class={ "badge badge-" + eq.Status }>{ eq.Status }</span></td>
+						<td>{ fmt.Sprintf("%d/%d", eq.Attempts, eq.MaxAttempts) }</td>
+						<td>{ eq.CreatedAt }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	} else {
+		<div class="empty-state"><p>No export queue items.</p></div>
+	}
+}
+
+templ AlertsPage(data PageData, alertList []AlertView, filterStatus string) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Alerts</h1>
+			if data.Permissions["alert.manage"] {
+				<button class="btn btn-outline" hx-post="/api/alerts/evaluate" hx-swap="none">Evaluate Now</button>
+			}
+		</div>
+		if len(alertList) > 0 {
+			<table class="table">
+				<thead><tr><th>ID</th><th>Title</th><th>Severity</th><th>Entity</th><th>Status</th><th>Claimed By</th><th>Actions</th></tr></thead>
+				<tbody>
+					for _, a := range alertList {
+						<tr>
+							<td>{ fmt.Sprintf("#%d", a.ID) }</td>
+							<td>{ a.Title }</td>
+							<td><span class={ "badge badge-severity-" + a.Severity }>{ a.Severity }</span></td>
+							<td>{ a.EntityType } { fmt.Sprintf("#%d", a.EntityID) }</td>
+							<td><span class={ "badge badge-" + a.Status }>{ a.Status }</span></td>
+							<td>{ a.ClaimedByName }</td>
+							<td>
+								if data.Permissions["alert.manage"] {
+									if a.Status == "open" {
+										<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/api/alerts/%d/claim", a.ID)) } style="display:inline">
+											<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+											<button type="submit" class="btn btn-sm btn-primary">Claim</button>
+										</form>
+									}
+									if a.Status == "claimed" {
+										<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/api/alerts/%d/process", a.ID)) } style="display:inline">
+											<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+											<button type="submit" class="btn btn-sm btn-primary">Process</button>
+										</form>
+									}
+									if a.Status == "processing" {
+										<button class="btn btn-sm btn-success" hx-get={ fmt.Sprintf("/alerts/%d/close-modal", a.ID) } hx-target="#modal-container">Close</button>
+									}
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		} else {
+			<div class="empty-state"><p>No alerts found.</p></div>
+		}
+		<div id="modal-container"></div>
+	}
+}
+
+func tabClass(active, name string) string {
+	if active == name || (active == "" && name == "inbox") {
+		return "tab active"
+	}
+	return "tab"
+}
+
+func notifClass(isRead bool) string {
+	if isRead {
+		return "notification-item"
+	}
+	return "notification-item unread"
+}
+
+func annClass(a AnnouncementView) string {
+	cls := "announcement-item priority-" + a.Priority
+	if !a.IsRead {
+		cls += " unread"
+	}
+	return cls
+}
+
+func hasPref(prefs []PreferenceView, channel, eventType string) bool {
+	for _, p := range prefs {
+		if p.Channel == channel && p.EventType == eventType && p.Enabled {
+			return true
+		}
+	}
+	return false
+}

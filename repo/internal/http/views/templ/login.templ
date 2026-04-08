@@ -1,0 +1,25 @@
+package templ
+
+templ LoginPage(data PageData, errorMsg, username string) {
+	@Layout(data) {
+		<div class="login-box">
+			<h1>FleetCommerce</h1>
+			<h3>Operations Hub</h3>
+			if errorMsg != "" {
+				<div class="flash flash-error">{ errorMsg }</div>
+			}
+			<form method="POST" action="/login">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<div class="form-group">
+					<label for="username">Username</label>
+					<input type="text" id="username" name="username" required autofocus class="form-control" value={ username }/>
+				</div>
+				<div class="form-group">
+					<label for="password">Password</label>
+					<input type="password" id="password" name="password" required class="form-control"/>
+				</div>
+				<button type="submit" class="btn btn-primary btn-block">Sign In</button>
+			</form>
+		</div>
+	}
+}

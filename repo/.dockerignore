@@ -1,0 +1,6 @@
+.git
+web/uploads/*
+web/exports/*
+*.exe
+*.test
+*.out

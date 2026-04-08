@@ -1,0 +1,49 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Audit Log</h1>
+</div>
+
+<div class="filter-bar">
+    <form hx-get="/audit" hx-target="#audit-list" hx-push-url="true" class="inline-form">
+        <select name="entity_type" class="form-control">
+            <option value="">All Entities</option>
+            <option value="user" {{if eq .FilterEntityType "user"}}selected{{end}}>User</option>
+            <option value="vehicle_model" {{if eq .FilterEntityType "vehicle_model"}}selected{{end}}>Vehicle Model</option>
+            <option value="cart" {{if eq .FilterEntityType "cart"}}selected{{end}}>Cart</option>
+            <option value="order" {{if eq .FilterEntityType "order"}}selected{{end}}>Order</option>
+            <option value="alert" {{if eq .FilterEntityType "alert"}}selected{{end}}>Alert</option>
+            <option value="metric" {{if eq .FilterEntityType "metric"}}selected{{end}}>Metric</option>
+            <option value="notification" {{if eq .FilterEntityType "notification"}}selected{{end}}>Notification</option>
+        </select>
+        <input type="number" name="entity_id" class="form-control" placeholder="Entity ID" value="{{.FilterEntityID}}">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+</div>
+
+<div id="audit-list">
+    {{if .Entries}}
+    <table class="table">
+        <thead>
+            <tr><th>Time</th><th>Entity</th><th>Action</th><th>Actor</th><th>Role</th><th>Details</th></tr>
+        </thead>
+        <tbody>
+        {{range .Entries}}
+            <tr>
+                <td>{{.OccurredAt.Format "2006-01-02 15:04:05"}}</td>
+                <td>{{.EntityType}} #{{.EntityID}}</td>
+                <td>{{.Action}}</td>
+                <td>{{if .ActorUserID}}User #{{.ActorUserID}}{{else}}System{{end}}</td>
+                <td>{{if .ActorRole}}{{.ActorRole}}{{else}}-{{end}}</td>
+                <td>
+                    {{if .MetadataJSON}}<code class="small-json">{{.MetadataJSON}}</code>{{end}}
+                </td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{template "pagination" .Pagination}}
+    {{else}}
+    <div class="empty-state"><p>No audit entries found.</p></div>
+    {{end}}
+</div>
+{{end}}

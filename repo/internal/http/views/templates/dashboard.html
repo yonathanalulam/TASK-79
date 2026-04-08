@@ -1,0 +1,46 @@
+{{define "content"}}
+<h1>Dashboard</h1>
+<div class="dashboard-cards">
+    <div class="card" hx-get="/api/dashboard/summary" hx-trigger="load" hx-target="#dashboard-summary">
+        <div id="dashboard-summary">
+            <div class="card-grid">
+                <div class="stat-card">
+                    <h3>Open Carts</h3>
+                    <span class="stat-value">{{.Summary.OpenCarts}}</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Orders</h3>
+                    <span class="stat-value">{{.Summary.ActiveOrders}}</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Unread Notifications</h3>
+                    <span class="stat-value">{{.Summary.UnreadNotifications}}</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Alerts</h3>
+                    <span class="stat-value">{{.Summary.ActiveAlerts}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{if .RecentAudit}}
+<h2>Recent Activity</h2>
+<table class="table">
+    <thead>
+        <tr><th>Time</th><th>Entity</th><th>Action</th><th>Actor</th></tr>
+    </thead>
+    <tbody>
+    {{range .RecentAudit}}
+        <tr>
+            <td>{{.OccurredAt.Format "2006-01-02 15:04"}}</td>
+            <td>{{.EntityType}} #{{.EntityID}}</td>
+            <td>{{.Action}}</td>
+            <td>{{if .ActorUserID}}User #{{.ActorUserID}}{{else}}System{{end}}</td>
+        </tr>
+    {{end}}
+    </tbody>
+</table>
+{{end}}
+{{end}}

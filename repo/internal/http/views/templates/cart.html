@@ -1,0 +1,38 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Shopping Carts</h1>
+    {{if hasPermission .Permissions "cart.write"}}
+    <button class="btn btn-primary" hx-post="/api/carts" hx-target="#cart-list" hx-swap="outerHTML">New Cart</button>
+    {{end}}
+</div>
+
+<div id="cart-list">
+    {{if .Carts}}
+    <table class="table">
+        <thead>
+            <tr><th>ID</th><th>Customer</th><th>Items</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        {{range .Carts}}
+            <tr>
+                <td>#{{.ID}}</td>
+                <td>{{.CustomerName}}</td>
+                <td>{{.ItemCount}}</td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                <td>
+                    <a href="/cart/{{.ID}}" class="btn btn-sm btn-outline">View</a>
+                    {{if and (eq .Status "open") (hasPermission $.Permissions "cart.merge")}}
+                    <button class="btn btn-sm btn-outline" hx-get="/cart/{{.ID}}/merge-modal" hx-target="#modal-container">Merge</button>
+                    {{end}}
+                </td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <div class="empty-state"><p>No carts found.</p></div>
+    {{end}}
+</div>
+<div id="modal-container"></div>
+{{end}}

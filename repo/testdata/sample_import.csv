@@ -1,0 +1,5 @@
+model_code,model_name,brand,series,year,description,publication_status,stock_quantity,expiry_date
+NIS-ALT-2025,Altima,Nissan,Sedan,2025,Mid-size sedan with ProPILOT assist,draft,25,
+NIS-ROG-2025,Rogue,Nissan,SUV,2025,Compact crossover SUV,published,40,
+CHV-SIL-2025,Silverado,Chevrolet,Truck,2025,Full-size pickup truck,published,100,
+CHV-EQX-2025,Equinox,Chevrolet,SUV,2025,Compact SUV with turbo engine,draft,18,

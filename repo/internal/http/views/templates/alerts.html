@@ -1,0 +1,63 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Alerts</h1>
+    {{if hasPermission .Permissions "alert.manage"}}
+    <button class="btn btn-outline" hx-post="/api/alerts/evaluate" hx-swap="none">Evaluate Now</button>
+    {{end}}
+</div>
+
+<div class="filter-bar">
+    <form hx-get="/alerts" hx-target="#alert-list" hx-push-url="true" class="inline-form">
+        <select name="status" class="form-control">
+            <option value="">All</option>
+            <option value="open" {{if eq .FilterStatus "open"}}selected{{end}}>Open</option>
+            <option value="claimed" {{if eq .FilterStatus "claimed"}}selected{{end}}>Claimed</option>
+            <option value="processing" {{if eq .FilterStatus "processing"}}selected{{end}}>Processing</option>
+            <option value="closed" {{if eq .FilterStatus "closed"}}selected{{end}}>Closed</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+</div>
+
+<div id="alert-list">
+    {{if .Alerts}}
+    <table class="table">
+        <thead>
+            <tr><th>ID</th><th>Title</th><th>Severity</th><th>Entity</th><th>Status</th><th>Claimed By</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        {{range .Alerts}}
+        <tr>
+            <td>#{{.ID}}</td>
+            <td>{{.Title}}</td>
+            <td><span class="badge badge-severity-{{.Severity}}">{{.Severity}}</span></td>
+            <td>{{.EntityType}} #{{.EntityID}}</td>
+            <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+            <td>{{if .ClaimedBy}}{{.ClaimedByName}}{{else}}-{{end}}</td>
+            <td>
+                {{if hasPermission $.Permissions "alert.manage"}}
+                {{if eq .Status "open"}}
+                <form method="POST" action="/api/alerts/{{.ID}}/claim" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button type="submit" class="btn btn-sm btn-primary">Claim</button>
+                </form>
+                {{else if eq .Status "claimed"}}
+                <form method="POST" action="/api/alerts/{{.ID}}/process" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button type="submit" class="btn btn-sm btn-primary">Process</button>
+                </form>
+                {{else if eq .Status "processing"}}
+                <button class="btn btn-sm btn-success" hx-get="/alerts/{{.ID}}/close-modal" hx-target="#modal-container">Close</button>
+                {{end}}
+                {{end}}
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <div class="empty-state"><p>No alerts found.</p></div>
+    {{end}}
+</div>
+<div id="modal-container"></div>
+{{end}}

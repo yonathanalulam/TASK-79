@@ -1,0 +1,82 @@
+package templ
+
+import "fmt"
+
+templ CatalogPage(data PageData, brands []BrandOption, models []CatalogModel, pag Pagination, filterStatus, filterQuery string) {
+	@Layout(data) {
+		<div class="page-header">
+			<h1>Vehicle Catalog</h1>
+			<div class="page-actions">
+				if data.Permissions["catalog.write"] {
+					<a href="/catalog/new" class="btn btn-primary">Add Vehicle</a>
+				}
+				if data.Permissions["catalog.import"] {
+					<button class="btn btn-outline" hx-get="/catalog/import" hx-target="#modal-container" hx-swap="innerHTML">Import CSV</button>
+				}
+				<a href="/api/catalog/export.csv" class="btn btn-outline">Export CSV</a>
+			</div>
+		</div>
+		<div class="catalog-layout">
+			<aside class="filter-sidebar">
+				<h3>Filters</h3>
+				<form hx-get="/catalog" hx-target=".catalog-main" hx-push-url="true">
+					<div class="form-group">
+						<label>Status</label>
+						<select name="status" class="form-control">
+							<option value="">All</option>
+							<option value="draft" selected?={ filterStatus == "draft" }>Draft</option>
+							<option value="published" selected?={ filterStatus == "published" }>Published</option>
+							<option value="unpublished" selected?={ filterStatus == "unpublished" }>Unpublished</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label>Search</label>
+						<input type="text" name="q" class="form-control" placeholder="Model code or name" value={ filterQuery }/>
+					</div>
+					<button type="submit" class="btn btn-primary btn-block">Apply</button>
+				</form>
+			</aside>
+			<div class="catalog-main">
+				if len(models) > 0 {
+					<table class="table">
+						<thead>
+							<tr><th>Code</th><th>Name</th><th>Brand</th><th>Series</th><th>Year</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+						</thead>
+						<tbody>
+							for _, m := range models {
+								<tr>
+									<td>{ m.ModelCode }</td>
+									<td><a href={ templ.SafeURL(fmt.Sprintf("/catalog/%d", m.ID)) }>{ m.ModelName }</a></td>
+									<td>{ m.BrandName }</td>
+									<td>{ m.SeriesName }</td>
+									<td>{ fmt.Sprint(m.Year) }</td>
+									<td>{ fmt.Sprint(m.StockQuantity) }</td>
+									<td><span class={ "badge badge-" + m.PublicationStatus }>{ m.PublicationStatus }</span></td>
+									<td><a href={ templ.SafeURL(fmt.Sprintf("/catalog/%d", m.ID)) } class="btn btn-sm btn-outline">View</a></td>
+								</tr>
+							}
+						</tbody>
+					</table>
+					@PaginationComponent(pag)
+				} else {
+					<div class="empty-state"><p>No vehicles found.</p></div>
+				}
+			</div>
+		</div>
+		<div id="modal-container"></div>
+	}
+}
+
+templ PaginationComponent(pag Pagination) {
+	if pag.TotalPages > 1 {
+		<div class="pagination">
+			if pag.Page > 1 {
+				<a href={ templ.SafeURL(fmt.Sprintf("?page=%d", pag.Page-1)) } class="btn btn-sm btn-outline">&laquo; Prev</a>
+			}
+			<span class="page-info">Page { fmt.Sprint(pag.Page) } of { fmt.Sprint(pag.TotalPages) }</span>
+			if pag.Page < pag.TotalPages {
+				<a href={ templ.SafeURL(fmt.Sprintf("?page=%d", pag.Page+1)) } class="btn btn-sm btn-outline">Next &raquo;</a>
+			}
+		</div>
+	}
+}
