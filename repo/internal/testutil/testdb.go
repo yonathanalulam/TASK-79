@@ -45,45 +45,88 @@ func MustAudit(t *testing.T, pool *pgxpool.Pool) *audit.Service {
 func truncateAll(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
-	tables := []string{
-		"export_attempt_logs", "export_queue_items",
-		"notification_recipients", "notifications",
-		"notification_preferences", "announcement_reads", "announcements",
-		"alert_events", "alerts", "alert_rules",
-		"metric_activation_reviews", "metric_lineage_edges", "metric_dependencies",
-		"metric_filters", "metric_dimensions", "metric_definition_versions",
-		"metric_permissions", "metric_definitions",
-		"chart_metric_dependencies", "charts",
-		"csv_import_rows", "csv_import_jobs",
-		"order_notes", "order_state_history", "order_payments",
-		"order_lines", "orders",
-		"cart_items", "carts",
-		"vehicle_model_media", "media", "vehicle_models", "series", "brands",
-		"audit_log",
-		"user_roles", "sessions", "users", "roles",
-	}
-	for _, table := range tables {
-		if _, err := pool.Exec(ctx, "DELETE FROM "+table); err != nil {
-			// table may not exist in some test schemas, ignore
+
+	// Drop audit_log rules temporarily so TRUNCATE works
+	pool.Exec(ctx, "DROP RULE IF EXISTS audit_log_no_delete ON audit_log")
+	pool.Exec(ctx, "DROP RULE IF EXISTS audit_log_no_update ON audit_log")
+
+	// TRUNCATE CASCADE is the most reliable way to clean all tables
+	_, err := pool.Exec(ctx, `TRUNCATE
+		export_attempt_logs, export_queue_items,
+		notification_recipients, notifications,
+		notification_preferences, announcement_reads, announcements,
+		notification_templates,
+		alert_events, alerts, alert_rules,
+		metric_activation_reviews, metric_lineage_edges, metric_dependencies,
+		metric_filters, metric_dimensions, metric_definition_versions,
+		metric_permissions, metric_definitions,
+		chart_metric_dependencies, charts,
+		csv_import_rows, csv_import_jobs,
+		order_events, order_notes, order_state_history, payment_records,
+		order_lines, orders,
+		cart_events, cart_items, carts,
+		customer_accounts,
+		vehicle_media, vehicle_model_versions, vehicle_models,
+		series, brands,
+		sessions, user_roles, role_permissions, permissions,
+		users, roles,
+		audit_log
+		CASCADE`)
+	if err != nil {
+		// If bulk TRUNCATE fails, try individual tables
+		tables := []string{
+			"audit_log",
+			"export_attempt_logs", "export_queue_items",
+			"notification_recipients", "notifications",
+			"notification_preferences", "announcement_reads", "announcements",
+			"notification_templates",
+			"alert_events", "alerts", "alert_rules",
+			"metric_activation_reviews", "metric_lineage_edges", "metric_dependencies",
+			"metric_filters", "metric_dimensions", "metric_definition_versions",
+			"metric_permissions", "metric_definitions",
+			"chart_metric_dependencies", "charts",
+			"csv_import_rows", "csv_import_jobs",
+			"order_events", "order_notes", "order_state_history", "payment_records",
+			"order_lines", "orders",
+			"cart_events", "cart_items", "carts",
+			"customer_accounts",
+			"vehicle_media", "vehicle_model_versions", "vehicle_models",
+			"series", "brands",
+			"sessions", "user_roles", "role_permissions", "permissions",
+			"users", "roles",
+		}
+		for _, table := range tables {
+			pool.Exec(ctx, "TRUNCATE "+table+" CASCADE")
 		}
 	}
+
+	// Re-create audit rules
+	pool.Exec(ctx, "CREATE OR REPLACE RULE audit_log_no_delete AS ON DELETE TO audit_log DO INSTEAD NOTHING")
+	pool.Exec(ctx, "CREATE OR REPLACE RULE audit_log_no_update AS ON UPDATE TO audit_log DO INSTEAD NOTHING")
 }
 
-// SeedUser creates a test user and role, returns userID.
-func SeedUser(t *testing.T, pool *pgxpool.Pool, fullName, email string) int {
+// SeedUser creates a test user and returns userID.
+// fullName is used as the display name; uniqueKey is used to generate a unique username.
+// Creates a minimal role if needed.
+func SeedUser(t *testing.T, pool *pgxpool.Pool, fullName, uniqueKey string) int {
 	t.Helper()
 	ctx := context.Background()
 
 	// Ensure a role exists
 	var roleID int
-	err := pool.QueryRow(ctx, `INSERT INTO roles (name, display_name) VALUES ('admin','Admin') ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id`).Scan(&roleID)
+	err := pool.QueryRow(ctx,
+		`INSERT INTO roles (name, description) VALUES ('test_admin', 'Test admin role') ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
+	).Scan(&roleID)
 	if err != nil {
 		t.Fatalf("seed role: %v", err)
 	}
 
+	// Use uniqueKey as username (callers pass unique strings like emails)
 	var userID int
-	err = pool.QueryRow(ctx, `INSERT INTO users (email, password_hash, full_name) VALUES ($1, 'test_hash', $2) RETURNING id`,
-		email, fullName).Scan(&userID)
+	err = pool.QueryRow(ctx,
+		`INSERT INTO users (username, password_hash, full_name) VALUES ($1, 'test_hash', $2) RETURNING id`,
+		uniqueKey, fullName,
+	).Scan(&userID)
 	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}

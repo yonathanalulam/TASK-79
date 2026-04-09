@@ -24,11 +24,11 @@ func TestSplitOrderOnlyEligibleLines(t *testing.T) {
 
 	// Seed customer account
 	var accountID int
-	pool.QueryRow(ctx, `INSERT INTO customer_accounts (name, email, phone) VALUES ('Test Customer','cust@test.com','555-1234') RETURNING id`).Scan(&accountID)
+	pool.QueryRow(ctx, `INSERT INTO customer_accounts (account_code, account_name) VALUES ('TEST-SPLIT', 'Test Customer') RETURNING id`).Scan(&accountID)
 
 	// Seed cart
 	var cartID int
-	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'active') RETURNING id`, accountID).Scan(&cartID)
+	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'open') RETURNING id`, accountID).Scan(&cartID)
 
 	// Create an order with a backordered line (request more than stock)
 	orderID, _, err := svc.CreateOrder(ctx, orders.CreateOrderParams{
@@ -100,9 +100,9 @@ func TestSplitOrderRejectsNonBackorderedLine(t *testing.T) {
 	pool.QueryRow(ctx, `INSERT INTO vehicle_models (brand_id, series_id, model_code, model_name, year, publication_status, stock_quantity) VALUES ($1,$2,'NOSPLIT01','No Split',2024,'published',100) RETURNING id`, brandID, seriesID).Scan(&modelID)
 
 	var accountID int
-	pool.QueryRow(ctx, `INSERT INTO customer_accounts (name, email, phone) VALUES ('NoSplit Customer','nosplit@test.com','555-0000') RETURNING id`).Scan(&accountID)
+	pool.QueryRow(ctx, `INSERT INTO customer_accounts (account_code, account_name) VALUES ('TEST-NOSPLIT', 'NoSplit Customer') RETURNING id`).Scan(&accountID)
 	var cartID int
-	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'active') RETURNING id`, accountID).Scan(&cartID)
+	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'open') RETURNING id`, accountID).Scan(&cartID)
 
 	// Create order where stock is sufficient (no backorder)
 	orderID, _, err := svc.CreateOrder(ctx, orders.CreateOrderParams{
@@ -162,9 +162,13 @@ func TestSplitOrderFailureLeavesDataUnchanged(t *testing.T) {
 	pool.QueryRow(ctx, `INSERT INTO vehicle_models (brand_id, series_id, model_code, model_name, year, publication_status, stock_quantity) VALUES ($1,$2,'UNCH01','Unchanged Model',2024,'published',100) RETURNING id`, brandID, seriesID).Scan(&modelID)
 
 	var accountID int
-	pool.QueryRow(ctx, `INSERT INTO customer_accounts (name, email, phone) VALUES ('Unchanged Cust','unchanged@test.com','555-8888') RETURNING id`).Scan(&accountID)
+	if err := pool.QueryRow(ctx, `INSERT INTO customer_accounts (account_code, account_name) VALUES ('TEST-UNCH', 'Unchanged Cust') RETURNING id`).Scan(&accountID); err != nil {
+		t.Fatalf("seed account: %v", err)
+	}
 	var cartID int
-	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'active') RETURNING id`, accountID).Scan(&cartID)
+	if err := pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'open') RETURNING id`, accountID).Scan(&cartID); err != nil {
+		t.Fatalf("seed cart: %v", err)
+	}
 
 	orderID, _, err := svc.CreateOrder(ctx, orders.CreateOrderParams{
 		CustomerAccountID: accountID,
@@ -226,9 +230,9 @@ func TestSplitOrderRejectsLineBelongingToAnotherOrder(t *testing.T) {
 	pool.QueryRow(ctx, `INSERT INTO vehicle_models (brand_id, series_id, model_code, model_name, year, publication_status, stock_quantity) VALUES ($1,$2,'OTHER01','Other Model',2024,'published',1) RETURNING id`, brandID, seriesID).Scan(&modelID)
 
 	var accountID int
-	pool.QueryRow(ctx, `INSERT INTO customer_accounts (name, email, phone) VALUES ('Other Cust','other@test.com','555-9999') RETURNING id`).Scan(&accountID)
+	pool.QueryRow(ctx, `INSERT INTO customer_accounts (account_code, account_name) VALUES ('TEST-OTHER', 'Other Cust') RETURNING id`).Scan(&accountID)
 	var cartID int
-	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'active') RETURNING id`, accountID).Scan(&cartID)
+	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'open') RETURNING id`, accountID).Scan(&cartID)
 
 	// Create two orders
 	orderID1, _, _ := svc.CreateOrder(ctx, orders.CreateOrderParams{
@@ -239,7 +243,7 @@ func TestSplitOrderRejectsLineBelongingToAnotherOrder(t *testing.T) {
 	// Reset stock for second order
 	pool.Exec(ctx, `UPDATE vehicle_models SET stock_quantity=1 WHERE id=$1`, modelID)
 	var cartID2 int
-	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'active') RETURNING id`, accountID).Scan(&cartID2)
+	pool.QueryRow(ctx, `INSERT INTO carts (customer_account_id, status) VALUES ($1, 'open') RETURNING id`, accountID).Scan(&cartID2)
 	orderID2, _, _ := svc.CreateOrder(ctx, orders.CreateOrderParams{
 		CustomerAccountID: accountID, SourceCartID: cartID2, Location: "wh", CreatedBy: userID,
 		Lines: []orders.CreateOrderLineParams{{VehicleModelID: modelID, QuantityRequested: 10}},

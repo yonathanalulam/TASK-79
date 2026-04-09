@@ -201,8 +201,14 @@ func (s *Service) CreateMetric(ctx context.Context, p CreateParams) (int, error)
 		}
 	}
 
-	// Persist filters
+	// Persist filters (validate name/expression before insert)
 	for _, f := range p.Filters {
+		if f.Name == "" {
+			return 0, errors.New("filter name is required")
+		}
+		if f.Expression == "" {
+			return 0, errors.New("filter expression is required")
+		}
 		if _, err := tx.Exec(ctx, `INSERT INTO metric_filters (metric_id, name, expression) VALUES ($1, $2, $3)`, id, f.Name, f.Expression); err != nil {
 			return 0, fmt.Errorf("create filter: %w", err)
 		}

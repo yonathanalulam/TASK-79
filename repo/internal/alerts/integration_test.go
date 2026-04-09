@@ -17,11 +17,11 @@ func TestClaimAlertPersistsStateAndAudit(t *testing.T) {
 
 	// Seed an alert rule and alert
 	var ruleID int
-	if err := pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Test Rule','desc','low_stock','{"threshold":5}','medium') RETURNING id`).Scan(&ruleID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Test Rule','desc','low_stock','{"threshold":5}','warning') RETURNING id`).Scan(&ruleID); err != nil {
 		t.Fatalf("seed rule: %v", err)
 	}
 	var alertID int
-	if err := pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details) VALUES ($1,'vehicle_model',1,'medium','Test Alert','{}') RETURNING id`, ruleID).Scan(&alertID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details) VALUES ($1,'vehicle_model',1,'warning','Test Alert','{}') RETURNING id`, ruleID).Scan(&alertID); err != nil {
 		t.Fatalf("seed alert: %v", err)
 	}
 
@@ -60,9 +60,9 @@ func TestProcessAlertPersistsStateAndAudit(t *testing.T) {
 	userID := testutil.SeedUser(t, pool, "Alert User", "alert-process@test.com")
 
 	var ruleID int
-	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Process Rule','desc','low_stock','{"threshold":5}','high') RETURNING id`).Scan(&ruleID)
+	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Process Rule','desc','low_stock','{"threshold":5}','critical') RETURNING id`).Scan(&ruleID)
 	var alertID int
-	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status, claimed_by, claimed_at) VALUES ($1,'vehicle_model',1,'high','Test','{}','claimed',$2,NOW()) RETURNING id`, ruleID, userID).Scan(&alertID)
+	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status, claimed_by, claimed_at) VALUES ($1,'vehicle_model',1,'critical','Test','{}','claimed',$2,NOW()) RETURNING id`, ruleID, userID).Scan(&alertID)
 
 	if err := svc.ProcessAlert(ctx, alertID, userID); err != nil {
 		t.Fatalf("ProcessAlert: %v", err)
@@ -89,9 +89,9 @@ func TestCloseAlertRequiresResolutionNotes(t *testing.T) {
 	userID := testutil.SeedUser(t, pool, "Alert User", "alert-close@test.com")
 
 	var ruleID int
-	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Close Rule','desc','low_stock','{"threshold":5}','high') RETURNING id`).Scan(&ruleID)
+	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Close Rule','desc','low_stock','{"threshold":5}','critical') RETURNING id`).Scan(&ruleID)
 	var alertID int
-	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'high','Test','{}','processing') RETURNING id`, ruleID).Scan(&alertID)
+	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'critical','Test','{}','processing') RETURNING id`, ruleID).Scan(&alertID)
 
 	// Close without notes should fail
 	err := svc.CloseAlert(ctx, alertID, userID, "")
@@ -126,9 +126,9 @@ func TestClaimAlertRejectsNonOpen(t *testing.T) {
 	userID := testutil.SeedUser(t, pool, "Alert User", "alert-reject@test.com")
 
 	var ruleID int
-	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Reject Rule','desc','low_stock','{"threshold":5}','high') RETURNING id`).Scan(&ruleID)
+	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('Reject Rule','desc','low_stock','{"threshold":5}','critical') RETURNING id`).Scan(&ruleID)
 	var alertID int
-	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'high','Test','{}','claimed') RETURNING id`, ruleID).Scan(&alertID)
+	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'critical','Test','{}','claimed') RETURNING id`, ruleID).Scan(&alertID)
 
 	err := svc.ClaimAlert(ctx, alertID, userID)
 	if err == nil {
@@ -146,11 +146,11 @@ func TestClaimAlertFailureDoesNotMutateState(t *testing.T) {
 	userID := testutil.SeedUser(t, pool, "Alert User", "alert-noop@test.com")
 
 	var ruleID int
-	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('NoOp Rule','desc','low_stock','{"threshold":5}','low') RETURNING id`).Scan(&ruleID)
+	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('NoOp Rule','desc','low_stock','{"threshold":5}','info') RETURNING id`).Scan(&ruleID)
 
 	// Create alert in "processing" status — claiming should fail (not open)
 	var alertID int
-	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'low','NoOp','{}','processing') RETURNING id`, ruleID).Scan(&alertID)
+	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status) VALUES ($1,'vehicle_model',1,'info','NoOp','{}','processing') RETURNING id`, ruleID).Scan(&alertID)
 
 	err := svc.ClaimAlert(ctx, alertID, userID)
 	if err == nil {
@@ -189,11 +189,11 @@ func TestCloseAlertFailureLeavesStateUnchanged(t *testing.T) {
 	userID := testutil.SeedUser(t, pool, "Alert User", "alert-close-fail@test.com")
 
 	var ruleID int
-	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('CloseFail','desc','low_stock','{"threshold":5}','medium') RETURNING id`).Scan(&ruleID)
+	pool.QueryRow(ctx, `INSERT INTO alert_rules (name, description, rule_type, condition, severity) VALUES ('CloseFail','desc','low_stock','{"threshold":5}','warning') RETURNING id`).Scan(&ruleID)
 
 	// Alert is "claimed" — close requires "processing"
 	var alertID int
-	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status, claimed_by, claimed_at) VALUES ($1,'vehicle_model',1,'medium','CloseFail','{}','claimed',$2,NOW()) RETURNING id`, ruleID, userID).Scan(&alertID)
+	pool.QueryRow(ctx, `INSERT INTO alerts (alert_rule_id, entity_type, entity_id, severity, title, details, status, claimed_by, claimed_at) VALUES ($1,'vehicle_model',1,'warning','CloseFail','{}','claimed',$2,NOW()) RETURNING id`, ruleID, userID).Scan(&alertID)
 
 	err := svc.CloseAlert(ctx, alertID, userID, "Should not close")
 	if err == nil {
