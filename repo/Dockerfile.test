@@ -1,0 +1,13 @@
+# Test runner image — builds deps then runs the full test suite
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Default: run all tests with verbose output and 5-minute timeout
+CMD ["go", "test", "-v", "-count=1", "-timeout=5m", "-p=1", "./..."]
