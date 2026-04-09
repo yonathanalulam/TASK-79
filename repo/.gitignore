@@ -7,8 +7,7 @@
 /server
 /seed
 
-# Test binary
-*.test
+
 
 # Output
 *.out
