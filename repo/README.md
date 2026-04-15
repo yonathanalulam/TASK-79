@@ -1,5 +1,7 @@
 # FleetCommerce Operations Hub
 
+Project Type: fullstack
+
 An offline-first dealership parts and vehicle catalog workflow system built with Go, Gin, PostgreSQL, and HTMX.
 
 ## Architecture
@@ -38,11 +40,17 @@ testdata/            - Sample CSV files
 
 ## Quick Start
 
+### Prerequisites
+
+- Docker and Docker Compose
+
+### Start the application
+
 ```bash
-docker compose up
+docker-compose up
 ```
 
-That's it. This single command:
+This single command:
 - Starts PostgreSQL 16
 - Builds the Go application
 - Runs database migrations
@@ -52,53 +60,72 @@ That's it. This single command:
 - Starts the background scheduler (order cutoff, alert evaluation, export retry)
 - Serves the application on **http://localhost:8080**
 
-### Prerequisites
+### Access
 
-- Docker and Docker Compose
-
-### Manual Setup (without Docker)
-
-If you prefer running without Docker:
-
-1. Install Go 1.22+ and PostgreSQL 14+
-2. Create database:
-   ```bash
-   createdb fleetcommerce
-   createuser fleet -P  # password: fleet
-   psql -c "GRANT ALL PRIVILEGES ON DATABASE fleetcommerce TO fleet;"
-   ```
-3. Start the server (auto-migrates and seeds):
-   ```bash
-   go run ./cmd/server
-   ```
-4. Open http://localhost:8080
+Open **http://localhost:8080** in your browser. You will be redirected to the login page.
 
 ## Demo Credentials
 
-| Username    | Password      | Role              |
-|-------------|---------------|-------------------|
-| admin       | password123   | Administrator     |
-| inventory   | password123   | Inventory Manager |
-| sales       | password123   | Sales Associate   |
-| auditor     | password123   | Auditor           |
+| Username    | Password      | Role              | Permissions |
+|-------------|---------------|-------------------|-------------|
+| admin       | password123   | Administrator     | Full system access — all modules, user management, system config |
+| inventory   | password123   | Inventory Manager | Catalog CRUD, publish, import, order transitions, alert management |
+| sales       | password123   | Sales Associate   | Catalog read, cart CRUD, order create, order notes |
+| auditor     | password123   | Auditor           | Read-only access to catalog, carts, orders, alerts, audit log, metrics |
 
 Password hashes and phone encryption are applied automatically on startup.
 
+## Post-Start Verification
+
+After running `docker-compose up`, verify the system is working:
+
+### UI Verification
+
+1. Open http://localhost:8080 — you should see the login page.
+2. Log in as `admin` / `password123` — you should see the Dashboard with summary cards (Open Carts, Active Orders, Unread Notifications, Active Alerts).
+3. Navigate to **Catalog** — you should see seeded vehicle models (Camry, RAV4, Civic, etc.).
+4. Navigate to **Notifications** — the Notification Center page should load with Inbox, Announcements, and Preferences tabs.
+
+### API Verification
+
+```bash
+# 1. Login and obtain session cookie
+curl -c cookies.txt -L -X POST http://localhost:8080/login \
+  -d "username=admin&password=password123&csrf_token=$(curl -s -c cookies.txt http://localhost:8080/login | grep -oP 'csrf_token" value="\K[^"]+' || curl -sb cookies.txt http://localhost:8080/login -c cookies.txt && grep csrf_token cookies.txt | awk '{print $NF}')"
+
+# 2. Check authenticated user info
+curl -s -b cookies.txt http://localhost:8080/api/me
+# Expected: {"ok":true,"message":"ok","data":{"user":{...},"roles":["administrator"],"permissions":{...}}}
+
+# 3. Check dashboard summary
+curl -s -b cookies.txt http://localhost:8080/api/dashboard/summary
+# Expected: {"ok":true,"message":"ok","data":{"open_carts":0,"active_orders":0,...}}
+
+# 4. List catalog brands
+curl -s -b cookies.txt http://localhost:8080/api/catalog/brands
+# Expected: {"ok":true,"message":"ok","data":[{"ID":1,"Name":"Toyota"},{"ID":2,"Name":"Honda"},...]}
+```
+
+**Expected success indicators:**
+- All API responses contain `"ok":true`
+- Dashboard summary returns numeric counts for carts, orders, notifications, alerts
+- Catalog brands returns the 5 seeded brands (Toyota, Honda, Ford, BMW, Mercedes-Benz)
+
 ## Configuration
 
-| Env Variable           | Default                     | Description                    |
-|------------------------|-----------------------------|--------------------------------|
-| APP_PORT               | 8080                        | Server port                    |
-| DATABASE_URL           | postgres://fleet:fleet@...  | PostgreSQL connection string   |
-| SESSION_SECRET         | change-me...                | Session cookie signing key     |
-| ENCRYPTION_KEY         | 0123456789abcdef...         | AES-GCM key for encryption     |
-| UPLOADS_DIR            | ./web/uploads               | File upload directory          |
-| EXPORTS_DIR            | ./web/exports               | Export queue output directory   |
-| MAX_UPLOAD_BYTES       | 26214400 (25MB)             | Max upload file size           |
-| SCHEDULER_ENABLED      | true                        | Enable background scheduler    |
-| CUTOFF_INTERVAL_SEC    | 60                          | Order cutoff check interval    |
-| ALERT_INTERVAL_SEC     | 900                         | Alert evaluation interval      |
-| EXPORT_RETRY_INTERVAL_SEC | 300                      | Export retry interval          |
+| Env Variable              | Default                     | Description                    |
+|---------------------------|-----------------------------|--------------------------------|
+| APP_PORT                  | 8080                        | Server port                    |
+| DATABASE_URL              | postgres://fleet:fleet@...  | PostgreSQL connection string   |
+| SESSION_SECRET            | change-me...                | Session cookie signing key     |
+| ENCRYPTION_KEY            | 0123456789abcdef...         | AES-GCM key for encryption     |
+| UPLOADS_DIR               | ./web/uploads               | File upload directory          |
+| EXPORTS_DIR               | ./web/exports               | Export queue output directory   |
+| MAX_UPLOAD_BYTES          | 26214400 (25MB)             | Max upload file size           |
+| SCHEDULER_ENABLED         | true                        | Enable background scheduler    |
+| CUTOFF_INTERVAL_SEC       | 60                          | Order cutoff check interval    |
+| ALERT_INTERVAL_SEC        | 900                         | Alert evaluation interval      |
+| EXPORT_RETRY_INTERVAL_SEC | 300                         | Export retry interval          |
 
 ## Key Features
 
@@ -160,8 +187,16 @@ Password hashes and phone encryption are applied automatically on startup.
 
 ## Running Tests
 
+Run the full test suite using the Docker-based test runner:
+
 ```bash
-go test ./...
+./run_tests.sh
+```
+
+This starts an ephemeral PostgreSQL test database, builds the test runner, and executes all tests including endpoint coverage. Expected output ends with:
+
+```
+==> All tests passed.
 ```
 
 ## Known Simplifications
