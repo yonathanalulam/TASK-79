@@ -1,4 +1,4 @@
-# Audit Report - FleetCommerce Operations Hub (Re-audit 3)
+# Audit Report - FleetCommerce Operations Hub 
 
 ## 1. Verdict
 - Overall conclusion: **Partial Pass**
@@ -183,5 +183,4 @@ Covered: CSRF behavior and key authorization checks for order timeline/notificat
 Uncovered major risks: split-line integrity under real DB state, import transactional rollback, announcement read persistence, and export artifact processing. Tests could still pass while severe workflow defects remain.
 
 ## 9. Final Notes
-- Re-audit confirms substantial remediation progress versus `audit_report_2.md` findings.
 - Remaining issues are concentrated in metric completeness, mutation error-handling discipline, and high-risk integration test depth.
