@@ -1,4 +1,4 @@
-# Audit Report - FleetCommerce Operations Hub (Re-audit 6)
+# Audit Report - FleetCommerce Operations Hub
 
 ## 1. Verdict
 - Overall conclusion: **Partial Pass**
@@ -165,4 +165,4 @@ Major remaining gap: order timeline object-level authorization has no test and c
 
 ## 9. Final Notes
 - This is a static-only audit with traceable evidence.
-- The latest iteration shows meaningful improvements over the prior report; the remaining blocker is a focused, fixable object-authorization defect in order timeline handling.
+
